@@ -40,53 +40,55 @@ server.post('/api/users', (req, res) => {
 
   db
     .insert(newUser)
-    .then(user => res.status(201).json({ success: true, user }))
+    .then(user => {
+      db
+        .findById(user.id)
+        .then(user => {
+          if (!user) res.status(404).json({ success: false, error: "User does not exist." });
+          else res.status(201).json({ success: true, user });
+        })
+    })
     .catch(err => res.status(500).json({ success: false, error: "There was an error while saving user to database." }));
 });
 
 server.put('/api/users/:id', (req, res) => {
   const { id } = req.params;
+  const originalUser = db.findById(id);
   const updatedUser = req.body;
   const { name, bio } = updatedUser;
 
   if (!name || !bio)
     res.status(400).json({ success: false, error: "Please provide a name and bio for the user." });
 
-  db
-    .findById(id)
-    .then(user => {
-      if (user) {
+  if (!originalUser) {
+    res.status(404).json({ success: false, error: "User does not exist." });
+  } else {
+    db
+      .update(id, updatedUser)
+      .then(_ => {
         db
-          .update(id, updatedUser)
-          .then(_ => {
-            db
-              .findById(id)
-              .then(user => res.status(200).json({ success: true, user }));
-          })
-          .catch(err => res.status(500).json({ success: false, error: "User information could not be modified." }));
-      } else {
-        res.status(404).json({ success: false, error: "User does not exist." });
-      }
-    })
-    .catch(err => res.status(500).json({ success: false, error: "User information could not be retrieved." }));
+          .findById(id)
+          .then(user => res.status(200).json({ success: true, user }));
+      })
+      .catch(err => res.status(500).json({ success: false, error: "User information could not be modified." }));
+  }
 });
 
 server.delete('/api/users/:id', (req, res) => {
   const { id } = req.params;
+  const foundUser = db.findById(id);
 
-  db
-    .findById(id)
-    .then(user => {
-      if (user) {
-        db
-          .remove(id)
-          .then(removed => res.status(200).json({ success: true, message: `User ${id} removed.` }))
-          .catch(err => res.status(500).json({ success: false, error: "User could not be removed." }));
-      } else {
-        res.status(404).json({ success: false, error: "User does not exist." });
-      }
-    })
-    .catch(err => res.status(500).json({ success: false, error: "User information could not be retrieved." }));
+  if (!foundUser) {
+    res.status(404).json({ success: false, error: "User does not exist." });
+  } else {
+    db
+      .remove(id)
+      .then(removed => {
+        if (!removed) res.status(404).json({ success: false, error: "User does not exist." });
+        else res.status(200).json({ success: true, message: `User ${id} removed.` });
+      })
+      .catch(err => res.status(500).json({ success: false, error: "User could not be removed." }));
+  }
 });
 
 server.listen(port, _ => console.log(`now listening on port ${port}`));
