@@ -71,4 +71,22 @@ server.put('/api/users/:id', (req, res) => {
     .catch(err => res.status(500).json({ success: false, error: "User information could not be retrieved." }));
 });
 
+server.delete('/api/users/:id', (req, res) => {
+  const { id } = req.params;
+
+  db
+    .findById(id)
+    .then(user => {
+      if (user) {
+        db
+          .remove(id)
+          .then(removed => res.status(200).json({ success: true, message: `User ${id} removed.` }))
+          .catch(err => res.status(500).json({ success: false, error: "User could not be removed." }));
+      } else {
+        res.status(404).json({ success: false, error: "User does not exist." });
+      }
+    })
+    .catch(err => res.status(500).json({ success: false, error: "User information could not be retrieved." }));
+});
+
 server.listen(port, _ => console.log(`now listening on port ${port}`));
